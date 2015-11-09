@@ -103,8 +103,28 @@
         <p class="lead">Use this document as a way to quickly start any new project.<br> All you get is this text and a mostly barebones HTML document.</p>
       </div>
 
-    </div><!-- /.container -->
-    {% endblock container %}
+    </div>
+
+
+{% endblock container %}
+
+{% block pagination %}
+      {% if is_paginated %}
+    <div class="pagination">
+        <span class="page-links">
+            {% if page_obj.has_previous %}
+                <a href="/?page={{ page_obj.previous_page_number }}">previous</a>
+            {% endif %}
+            <span class="page-current">
+                Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}.
+            </span>
+            {% if page_obj.has_next %}
+                <a href="/?page={{ page_obj.next_page_number }}">next</a>
+            {% endif %}
+        </span>
+    </div>
+    {% endif %}
+{% endblock %}
 
     <!-- Site footer -->
     {% block footer %}
@@ -120,6 +140,8 @@
             </div>
       </div>
     {% endblock %}
+
+
 
     <!-- Bootstrap core JavaScript
     ================================================== -->

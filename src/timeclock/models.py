@@ -7,6 +7,8 @@ import uuid
 from django.db import models
 from django.conf import settings
 
+def chop_microseconds(delta):
+    return delta - datetime.timedelta(microseconds=delta.microseconds)
 # Create your models here.
 class Project(models.Model):
     title = models.CharField(max_length = 200)
@@ -26,11 +28,13 @@ class Punch(models.Model):
             return True
         return False
 
+
+
     def duration(self):
         if self.time_out and self.time_in:
-            return self.time_out - self.time_in
+            return chop_microseconds(self.time_out - self.time_in)
         else:
-            return datetime.timedelta()
+            return chop_microseconds(datetime.timedelta())
 
     def __unicode__(self):
         return "%s (in: %s, out: %s, dur: %s)" % (self.user, str(self.time_in), str(self.time_out), str(self.duration()))

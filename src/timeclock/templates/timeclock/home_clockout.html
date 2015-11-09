@@ -3,12 +3,35 @@
 
 {% block title %}Clock Out{%endblock%}
 
-{% block navbar %}
+{% block navbar-left %}
+  {% include "_navbar.html" with active_link="inout" %}
+{% endblock %}
+
+{% block navbar-right %}
+  {% if not user.is_authenticated %}
+<a class="btn btn-default" href="{% url 'accounts:login' %}" role="button">Log in</a>
+<a class="btn btn-primary" href="{% url 'accounts:signup' %}" role="button">Sign up</a>
+  {% else %}
+    {{ block.super }}
+  {% endif %}
 {% endblock %}
 
 {% block container %}
 
 <h1>Clock Out</h1>
+	<div class="timer" style="text-align: center">
+		<label id="hours">00</label>:<label id="minutes">00</label>:<label id="seconds">00</label>
+	</div>
+	<script>
+	var sec = Math.floor(new Date().getTime() / 1000) - {{ last_punch.time_in|date:"U" }};
+	function pad ( val ) { return val > 9 ? val : "0" + val; } 
+	setInterval( function(){
+		$("#seconds").html(pad(++sec % 60));
+		$("#minutes").html(pad(parseInt(sec/60,10) % 60));
+		$("#hours").html(pad(parseInt(sec/60/60,10)));
+	}, 1000);
+	</script>
+
 <form action="." method="post">
 {% csrf_token %}
     <div class="col-md-9">
