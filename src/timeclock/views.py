@@ -1,12 +1,15 @@
 from django.shortcuts import render
-from django.core.urlresolvers import reverse
+from django.core.urlresolvers import reverse, reverse_lazy
 from django.views.generic import FormView, ListView
 from django.utils import timezone
 from .forms import PunchInForm, PunchOutForm
 from django.http import HttpResponseRedirect
 import datetime
+from django.conf import settings
 
 from .models import Punch, Project
+from django.contrib.auth.models import User
+
 
 # Create your views here.
 class ClockInOutView(FormView):
@@ -37,7 +40,11 @@ class ClockInOutView(FormView):
 
     def get_context_data(self, **kwargs):
         context = super(ClockInOutView, self).get_context_data(**kwargs)
-        context["last_punch"] = Punch.objects.filter(user = self.request.user).order_by('-time_in')[0]
+        objects = context["last_punch"] = Punch.objects.filter(user = self.request.user).order_by('-time_in')
+        if objects:
+            context["last_punch"] = objects[0]
+        else:
+            context["last_punch"] = None
         return context
 
     def form_valid(self, form):
@@ -60,49 +67,43 @@ class ClockInOutView(FormView):
 class PunchListView(ListView):
     model = Punch
     
+#class called it ReportView
 class ReportView(ListView):
     model = Punch
     paginate_by = 10
-
+    
     def get_queryset(self):
-        queryset = Punch.objects.filter(user = self.request.user)        
-
-        # except super users can see everyone
+        queryset = Punch.objects.filter(user = self.request.user)
         if self.request.user.is_superuser:
-            queryset = Punch.objects.all()        
+            queryset = Punch.objects.all()
 
-        # if Project was in the querystring
         if self.request.user.is_superuser and "user" in self.request.GET and self.request.GET["user"] != "":
-            queryset = queryset.filter(user = self.request.GET.get("user"))
-
+            queryset =queryset.filter(user = self.request.GET.get("user"))
+        
         if "project" in self.request.GET and self.request.GET["project"] != "":
             queryset = queryset.filter(project = self.request.GET.get("project"))
 
         if "time_in" in self.request.GET and self.request.GET["time_in"] != "":
             queryset = queryset.filter(time_in__gte = self.request.GET.get("time_in"))
-            
+
         if "time_out" in self.request.GET and self.request.GET["time_out"] != "":
-            queryset = queryset.filter(time_out__lte = self.request.GET.get("time_out"))
-            
+            d = datetime.datetime.strptime(self.request.GET.get("time_out"), "%Y-%m-%d")
+            d = d + datetime.timedelta(days = 1)
+            queryset = queryset.filter(time_in__lte = d)
+
         if "note" in self.request.GET and self.request.GET["note"] != "":
             queryset = queryset.filter(note__icontains = self.request.GET.get("note"))
 
         return queryset.order_by('-time_in')
-            
-    def get_context_data(self, **kwargs):
-        context = super(ReportView, self).get_context_data(**kwargs)
 
-        # Add all projects to the template's context
+    def get_context_data(self, **kwargs):
+        context = super(PunchListView, self).get_context_data(**kwargs)
+
         context["projects"] = Project.objects.all().order_by('title')
         context["users"] = User.objects.all().order_by('first_name').order_by('username')
 
-        # Get all objects for the current query
         queryset = self.get_queryset()
-
-        # Commented out because this was a fun academic exercize
-        #get_total_time = lambda queryset: sum([punch.duration() for punch in queryset])
-        #context["total_time"] = get_total_time(queryset)
-
+        
         total_time = datetime.timedelta(0)
         for punch in queryset:
             total_time += punch.duration()
@@ -110,6 +111,7 @@ class ReportView(ListView):
         context["total_time"] = total_time
 
         return context
+            
 
 
 
